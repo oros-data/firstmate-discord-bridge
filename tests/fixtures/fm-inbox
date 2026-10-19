@@ -1,0 +1,29 @@
+#!/usr/bin/env node
+import { appendFileSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { join } from 'node:path';
+
+const args = process.argv.slice(2);
+const home = process.env.FM_HOME;
+appendFileSync(join(home, 'calls.jsonl'), JSON.stringify({ args, cwd: process.cwd(), home }) + '\n');
+if (args[0] === 'note') {
+  const request = args[args.indexOf('--request-id') + 1];
+  const id = createHash('sha256').update(request).digest('hex').slice(0, 12);
+  const requestsPath = join(home, 'requests.json');
+  const requests = existsSync(requestsPath) ? JSON.parse(readFileSync(requestsPath, 'utf8')) : {};
+  const outcome = requests[request] ? 'replay' : 'created';
+  requests[request] = id;
+  writeFileSync(requestsPath, JSON.stringify(requests));
+  const failedWake = existsSync(join(home, 'failed-wake'));
+  console.log(JSON.stringify({ schema: 'fm-inbox-note.v1', id, request_id: request, saved: true, outcome, announced: !failedWake, acknowledged: false, path: join(home, `${id}.note`) }));
+  if (failedWake) process.exitCode = 3;
+} else if (args[0] === 'receipts') {
+  const file = join(home, 'receipts.json');
+  const replies = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+  const after = args.includes('--after') ? args[args.indexOf('--after') + 1] : '';
+  const page = replies.filter(reply => reply.cursor > after).slice(0, 2);
+  console.log(JSON.stringify({ schema: 'fm-inbox-receipts.v1', pending: [], handled: [], replies: page, reply_cursor: page.at(-1)?.cursor || after, omitted: [] }));
+} else {
+  console.error('Unexpected fake inbox command');
+  process.exitCode = 1;
+}
