@@ -52,6 +52,69 @@ It does not start the Gateway connection.
 Tests use local files and fake network transports.
 Tests do not use a Discord token or a real firstmate queue.
 
+## Forward the terminal answer to Discord
+
+`src/forward-final.mjs` copies the final Claude Code answer to Discord.
+It makes no model call and uses no extra model tokens.
+It answers only the most recent acknowledged Discord note without a recorded reply.
+It uses `fm-inbox.sh receipts` and the bridge note routes.
+It records the answer with `fm-inbox.sh reply`.
+The running bridge sends the reply to the original channel.
+Keep the bridge running.
+
+Add this entry to `hooks` in `/Users/pedrocipriano/Repos/firstmate/.claude/settings.local.json`.
+Keep this file untracked.
+Keep any existing hook entries.
+Do not add a second copy of this hook.
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/pedrocipriano/Repos/firstmate-discord-bridge/src/forward-final.mjs",
+            "timeout": 8
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Use Node.js 22 or newer on the Claude Code command path.
+The hook reads `.env` and `data/state.json` from the bridge repository, not the session directory.
+It uses `/Users/pedrocipriano/Repos/firstmate` as `FM_HOME`.
+It removes the configured bot token from the answer.
+The hook prints nothing and always exits with code 0.
+Each inbox command has a 2.5-second time limit.
+The hook has a 7-second time limit.
+
+The hook uses `last_assistant_message` from the [Stop hook input](https://code.claude.com/docs/en/hooks#stop-input).
+If this field is absent, it reads the last assistant message from the JSONL transcript.
+It copies text blocks only, not thinking or tool calls.
+The transcript can be incomplete when the hook starts.
+The hook cannot recover text that is absent from both sources.
+An empty answer or a single line that starts with `Captain, shipshape.` sends no reply.
+The default receipts bounds can exclude older notes.
+
+The hook sends text only, with no attachments.
+It disables attachment instructions in lines that start with `FILE:`.
+The bridge splits text at 1900 characters.
+A terminal answer can answer only one Discord note.
+The hook does not check whether the answer addresses that note.
+
+Private records in `data/forward-final/` prevent a second send for the same transcript message ID.
+A turn and text fingerprint also covers a payload whose transcript message is not yet saved.
+If the transcript is incomplete or no turn ID is available, identical text in the same session can be suppressed.
+The hook saves each record before it calls `reply`.
+It does not retry an uncertain or failed reply.
+Check `data/forward-final.log` and inbox receipts after a failure.
+Keep these records to prevent repeated replies.
+
 ## Limits
 
 - Use one bridge process for each data directory.
