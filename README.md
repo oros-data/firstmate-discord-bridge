@@ -6,6 +6,7 @@ It does not use an incoming webhook, a public URL, or an MCP server.
 It opens no incoming network port.
 
 Read [the setup guide](docs/SETUP.md) to create the server and bot.
+This project uses the MIT licence. See [LICENSE](LICENSE).
 Use Node.js 22 or newer.
 Do not install packages.
 
@@ -62,7 +63,7 @@ It records the answer with `fm-inbox.sh reply`.
 The running bridge sends the reply to the original channel.
 Keep the bridge running.
 
-Add this entry to `hooks` in `/Users/pedrocipriano/Repos/firstmate/.claude/settings.local.json`.
+Add this entry to `hooks` in `/path/to/firstmate/.claude/settings.local.json`.
 Keep this file untracked.
 Keep any existing hook entries.
 Do not add a second copy of this hook.
@@ -75,7 +76,7 @@ Do not add a second copy of this hook.
         "hooks": [
           {
             "type": "command",
-            "command": "node /Users/pedrocipriano/Repos/firstmate-discord-bridge/src/forward-final.mjs",
+            "command": "FM_HOME=/path/to/firstmate node /path/to/firstmate-discord-bridge/src/forward-final.mjs",
             "timeout": 8
           }
         ]
@@ -87,7 +88,7 @@ Do not add a second copy of this hook.
 
 Use Node.js 22 or newer on the Claude Code command path.
 The hook reads `.env` and `data/state.json` from the bridge repository, not the session directory.
-It uses `/Users/pedrocipriano/Repos/firstmate` as `FM_HOME`.
+Set `FM_HOME` in the hook command to the firstmate repository path.
 It removes the configured bot token from the answer.
 The hook prints nothing and always exits with code 0.
 Each inbox command has a 2.5-second time limit.

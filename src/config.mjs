@@ -26,11 +26,12 @@ export async function loadConfig(env = process.env, cwd = process.cwd()) {
   Object.assign(values, env);
   const required = ['DISCORD_BOT_TOKEN', 'DISCORD_GUILD_ID', 'DISCORD_CHANNEL_ID', 'DISCORD_OWNER_ID'];
   const missing = required.filter(key => !values[key]?.trim());
+  if (!values.FM_HOME?.trim()) missing.push('FM_HOME');
   if (missing.length) throw new Error(`Missing configuration: ${missing.join(', ')}`);
   for (const key of required.slice(1)) {
     if (!/^\d{1,20}$/.test(values[key])) throw new Error(`Invalid snowflake: ${key}`);
   }
-  const home = resolve(cwd, values.FM_HOME || '/Users/pedrocipriano/Repos/firstmate');
+  const home = resolve(cwd, values.FM_HOME);
   const data = resolve(cwd, values.BRIDGE_DATA_DIR || './data');
   return {
     token: values.DISCORD_BOT_TOKEN, guild: values.DISCORD_GUILD_ID,

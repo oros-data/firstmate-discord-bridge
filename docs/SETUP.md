@@ -3,11 +3,11 @@
 ## 1. Check the Mac
 
 Keep firstmate and this bridge on the same Mac.
-Use the local repository at `/Users/pedrocipriano/Repos/firstmate-discord-bridge`.
+Use the local repository at `/path/to/firstmate-discord-bridge`.
 Run this command in Terminal:
 
 ```sh
-cd /Users/pedrocipriano/Repos/firstmate-discord-bridge
+cd /path/to/firstmate-discord-bridge
 node --version
 ```
 
@@ -137,7 +137,7 @@ Use the desktop steps if you cannot find these controls.
 Run these commands:
 
 ```sh
-cd /Users/pedrocipriano/Repos/firstmate-discord-bridge
+cd /path/to/firstmate-discord-bridge
 cp .env.example .env
 chmod 600 .env
 open -e .env
@@ -155,7 +155,7 @@ An environment variable overrides the same value in `.env`.
 | `DISCORD_GUILD_ID` | Your private server ID |
 | `DISCORD_CHANNEL_ID` | Your parent text channel ID |
 | `DISCORD_OWNER_ID` | Your personal user ID |
-| `FM_HOME` | `/Users/pedrocipriano/Repos/firstmate` |
+| `FM_HOME` | `/path/to/firstmate` |
 | `FM_INBOX_BIN` | Empty uses `FM_HOME/bin/fm-inbox.sh` |
 | `BRIDGE_DATA_DIR` | Empty uses `./data` |
 
@@ -246,7 +246,7 @@ To send a file, put a separate line in the answer:
 
 ```text
 The result is ready.
-FILE: /Users/pedrocipriano/Repos/firstmate/data/result.png
+FILE: /path/to/firstmate/data/result.png
 ```
 
 The bridge removes each `FILE:` line from the answer text.
@@ -270,7 +270,7 @@ Replace `task-id` with a known task ID or an allowed Discord channel or thread I
 Add an absolute file path when needed:
 
 ```sh
-node src/cli.mjs post --thread task-id --text 'The image is ready.' --file /Users/pedrocipriano/Repos/firstmate/data/result.png
+node src/cli.mjs post --thread task-id --text 'The image is ready.' --file /path/to/firstmate/data/result.png
 ```
 
 The command uses the same file roots as answers.
@@ -285,7 +285,7 @@ Stop the foreground bridge first.
 Run these commands:
 
 ```sh
-cd /Users/pedrocipriano/Repos/firstmate-discord-bridge
+cd /path/to/firstmate-discord-bridge
 command -v node
 pwd -P
 mkdir -p logs
@@ -318,7 +318,7 @@ launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.firstmate.dis
 Read the logs:
 
 ```sh
-tail -f /Users/pedrocipriano/Repos/firstmate-discord-bridge/logs/bridge.log /Users/pedrocipriano/Repos/firstmate-discord-bridge/logs/bridge.error.log
+tail -f /path/to/firstmate-discord-bridge/logs/bridge.log /path/to/firstmate-discord-bridge/logs/bridge.error.log
 ```
 
 Check the job:
