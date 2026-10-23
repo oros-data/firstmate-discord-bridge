@@ -15,7 +15,7 @@ const run = promisify(execFile);
 test('configuration names every missing value and rejects old Node versions', async t => {
   const f = await fixture(t);
   await assert.rejects(loadConfig({}, f.root), error => {
-    for (const key of ['DISCORD_BOT_TOKEN', 'DISCORD_GUILD_ID', 'DISCORD_CHANNEL_ID', 'DISCORD_OWNER_ID']) assert.ok(error.message.includes(key));
+    for (const key of ['DISCORD_BOT_TOKEN', 'DISCORD_GUILD_ID', 'DISCORD_CHANNEL_ID', 'DISCORD_OWNER_ID', 'FM_HOME']) assert.ok(error.message.includes(key));
     return true;
   });
   assert.throws(() => requireNode('20.19.0'), /22 or newer/);
@@ -30,7 +30,7 @@ test('environment overrides .env and blank optional values use defaults', async 
   assert.equal(config.inbox, join(f.config.home, 'bin/fm-inbox.sh'));
   assert.equal(config.data, join(f.root, 'data'));
   assert.equal(config.token, 'test-secret');
-  await assert.rejects(loadConfig({ DISCORD_OWNER_ID: 'not-an-id' }, f.root), /DISCORD_OWNER_ID/);
+  await assert.rejects(loadConfig({ DISCORD_OWNER_ID: 'not-an-id', FM_HOME: f.config.home }, f.root), /DISCORD_OWNER_ID/);
 });
 
 test('token redaction covers all occurrences and thrown fetch failures', async () => {

@@ -8,7 +8,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig, redact } from './config.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const home = '/Users/pedrocipriano/Repos/firstmate';
 
 function textBlocks(content) {
   if (typeof content === 'string') return content;
@@ -49,7 +48,7 @@ async function finalMessage(payload) {
   return { text, keys, uncertainKey };
 }
 
-export function runInbox(args, text) {
+export function runInbox(args, text, home) {
   return new Promise((resolve, reject) => {
     const env = { ...process.env, FM_HOME: home };
     for (const key of ['DISCORD_BOT_TOKEN', 'FM_STATE_OVERRIDE', 'FM_DATA_OVERRIDE', 'FM_CONFIG_OVERRIDE']) delete env[key];
@@ -88,8 +87,9 @@ export async function forwardFinal(input, { data = join(root, 'data'), runner = 
     if (payload.hook_event_name && payload.hook_event_name !== 'Stop') return;
     const message = await finalMessage(payload);
     if (!message.text.trim() || /^Captain, shipshape\.[^\r\n]*$/.test(message.text.trim())) return;
+    const settings = await config();
     const state = JSON.parse(await readFile(join(data, 'state.json'), 'utf8'));
-    const receipts = JSON.parse(await runner(['receipts']));
+    const receipts = JSON.parse(await runner(['receipts'], undefined, settings.home));
     if (receipts.schema !== 'fm-inbox-receipts.v1' || !Array.isArray(receipts.handled)) throw new Error('Invalid inbox receipts.');
     const note = receipts.handled.filter(note => {
       const route = state.notes && Object.hasOwn(state.notes, note.id) ? state.notes[note.id] : null;
@@ -103,7 +103,7 @@ export async function forwardFinal(input, { data = join(root, 'data'), runner = 
       return first === second ? 0 : first > second ? -1 : 1;
     })[0];
     if (!note) return;
-    token = (await config()).token;
+    token = settings.token;
     const text = redact(message.text, token).replace(/^FILE:/gm, '\u200bFILE:');
     const records = join(data, 'forward-final');
     await mkdir(records, { recursive: true, mode: 0o700 });
@@ -118,7 +118,7 @@ export async function forwardFinal(input, { data = join(root, 'data'), runner = 
       try { await handle.writeFile(JSON.stringify({ note: note.id, at: new Date().toISOString() })); await handle.sync(); }
       finally { await handle.close(); }
     }
-    await runner(['reply', note.id, '-'], text);
+    await runner(['reply', note.id, '-'], text, settings.home);
   } catch (error) {
     await logFailure(data, error, token);
   }

@@ -24,7 +24,7 @@ async function fixture(t) {
     acknowledged: true, reply: null, ...overrides });
   const receipts = { schema: 'fm-inbox-receipts.v1', pending: [], handled: [note()] };
   const calls = [];
-  const options = { data, config: async () => ({ token: 'fake-secret' }), runner: async (args, text) => {
+  const options = { data, config: async () => ({ token: 'fake-secret', home: '/path/to/fake-firstmate' }), runner: async (args, text) => {
     calls.push({ args, text });
     return args[0] === 'receipts' ? JSON.stringify(receipts) : 'replied';
   } };
