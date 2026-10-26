@@ -6,6 +6,8 @@ import { createInterface } from 'node:readline';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig, redact } from './config.mjs';
+import { DiscordREST } from './rest.mjs';
+import { splitText } from './delivery.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -79,7 +81,7 @@ async function logFailure(data, error, token) {
 }
 
 export async function forwardFinal(input, { data = join(root, 'data'), runner = runInbox,
-  config = () => loadConfig(process.env, root) } = {}) {
+  config = () => loadConfig(process.env, root), transport = settings => new DiscordREST(settings.token) } = {}) {
   let token = process.env.DISCORD_BOT_TOKEN;
   try {
     const payload = JSON.parse(input);
@@ -102,7 +104,6 @@ export async function forwardFinal(input, { data = join(root, 'data'), runner = 
       const second = BigInt(state.notes[b.id].message);
       return first === second ? 0 : first > second ? -1 : 1;
     })[0];
-    if (!note) return;
     token = settings.token;
     const text = redact(message.text, token).replace(/^FILE:/gm, '\u200bFILE:');
     const records = join(data, 'forward-final');
@@ -115,10 +116,14 @@ export async function forwardFinal(input, { data = join(root, 'data'), runner = 
       let handle;
       try { handle = await open(join(records, name), 'wx', 0o600); }
       catch (error) { if (error.code === 'EEXIST') return; throw error; }
-      try { await handle.writeFile(JSON.stringify({ note: note.id, at: new Date().toISOString() })); await handle.sync(); }
+      try { await handle.writeFile(JSON.stringify({ note: note?.id || null, at: new Date().toISOString() })); await handle.sync(); }
       finally { await handle.close(); }
     }
-    await runner(['reply', note.id, '-'], text, settings.home);
+    if (note) await runner(['reply', note.id, '-'], text, settings.home);
+    else {
+      const rest = transport(settings);
+      for (const part of splitText(text).filter(value => value.trim())) await rest.message(settings.channel, part);
+    }
   } catch (error) {
     await logFailure(data, error, token);
   }
