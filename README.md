@@ -55,13 +55,15 @@ Tests do not use a Discord token or a real firstmate queue.
 
 ## Forward the terminal answer to Discord
 
-`src/forward-final.mjs` copies the final Claude Code answer to Discord.
+`src/forward-final.mjs` sends the final Claude Code answer to Discord.
 It makes no model call and uses no extra model tokens.
-It answers only the most recent acknowledged Discord note without a recorded reply.
-It uses `fm-inbox.sh receipts` and the bridge note routes.
-It records the answer with `fm-inbox.sh reply`.
+It replies to the most recent acknowledged Discord note without a recorded reply.
+If no note waits for a reply, it posts the answer to the configured main channel.
+It uses `fm-inbox.sh receipts` and the bridge note routes to find a waiting note.
+It records a note reply with `fm-inbox.sh reply`.
 The running bridge sends the reply to the original channel.
 Keep the bridge running.
+The hook keeps line breaks and splits long text at 1900 characters.
 
 Add this entry to `hooks` in `/path/to/firstmate/.claude/settings.local.json`.
 Keep this file untracked.

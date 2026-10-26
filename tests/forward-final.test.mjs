@@ -24,14 +24,16 @@ async function fixture(t) {
     acknowledged: true, reply: null, ...overrides });
   const receipts = { schema: 'fm-inbox-receipts.v1', pending: [], handled: [note()] };
   const calls = [];
-  const options = { data, config: async () => ({ token: 'fake-secret', home: '/path/to/fake-firstmate' }), runner: async (args, text) => {
+  const channelPosts = [];
+  const options = { data, config: async () => ({ token: 'fake-secret', home: '/path/to/fake-firstmate', channel: '20' }),
+    transport: () => ({ message: async (channel, text) => channelPosts.push({ channel, text }) }), runner: async (args, text) => {
     calls.push({ args, text });
     return args[0] === 'receipts' ? JSON.stringify(receipts) : 'replied';
   } };
   const payload = { hook_event_name: 'Stop', transcript_path: transcript, session_id: 'fake-session' };
   const run = patch => forwardFinal(JSON.stringify({ ...payload, ...patch }), options);
   const replies = () => calls.filter(call => call.args[0] === 'reply');
-  return { data, transcript, assistant, rows, note, receipts, options, payload, run, calls, replies };
+  return { data, transcript, assistant, rows, note, receipts, options, payload, run, calls, replies, channelPosts };
 }
 
 test('payload text takes precedence over a lagging transcript', async t => {
@@ -66,11 +68,36 @@ for (const [name, overrides] of [
   });
 }
 
-test('no qualifying note does nothing', async t => {
+test('no waiting note sends the final answer to the main channel', async t => {
   const f = await fixture(t);
   f.receipts.handled = [];
-  await f.run();
+  await f.run({ last_assistant_message: 'Terminal answer.' });
+  assert.deepEqual(f.channelPosts, [{ channel: '20', text: 'Terminal answer.' }]);
   assert.equal(f.replies().length, 0);
+});
+
+test('a waiting note gets a reply and no main-channel post', async t => {
+  const f = await fixture(t);
+  await f.run({ last_assistant_message: 'Answer to note.' });
+  assert.equal(f.replies().length, 1);
+  assert.deepEqual(f.channelPosts, []);
+});
+
+test('repeated final message is not sent twice across destinations', async t => {
+  const f = await fixture(t);
+  f.receipts.handled = [];
+  await f.run({ last_assistant_message: 'Same answer.' });
+  f.receipts.handled = [f.note()];
+  await f.run({ last_assistant_message: 'Same answer.' });
+  assert.equal(f.channelPosts.length, 1);
+  assert.equal(f.replies().length, 0);
+});
+
+test('main-channel post keeps line breaks', async t => {
+  const f = await fixture(t);
+  f.receipts.handled = [];
+  await f.run({ last_assistant_message: 'First line.\\nSecond line.' });
+  assert.equal(f.channelPosts[0].text, 'First line.\\nSecond line.');
 });
 
 test('multiple notes select the newest only', async t => {
