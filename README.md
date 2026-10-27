@@ -28,6 +28,8 @@ The bridge sends that answer to the original channel or thread.
 It checks answers every 3 seconds.
 It checks task files every 10 seconds.
 
+Set `KEEP_AWAKE_SECONDS=7200` to keep the Mac awake for two hours after each accepted owner message. Each new message starts the timer again. This setting needs macOS and the `caffeinate` tool. It does not prevent sleep when the lid is closed on battery. Leave the setting unset or set it to `0` to turn this feature off. Restart the bridge after you change the setting.
+
 The bridge creates one public Discord thread for each task metadata file it finds.
 A public thread in a private server is visible to members who can see its parent channel.
 Keep only your account and the bot in this server.

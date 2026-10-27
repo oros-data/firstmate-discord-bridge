@@ -5,8 +5,8 @@ import { deliverOnce, preparePlan, loadPlannedFiles } from './delivery.mjs';
 import { redact } from './config.mjs';
 
 export class Relay {
-  constructor(config, state, rest, firstmate, { fetcher = fetch, onError = () => {} } = {}) {
-    Object.assign(this, { config, state, rest, firstmate, fetcher, onError });
+  constructor(config, state, rest, firstmate, { fetcher = fetch, onError = () => {}, keepAwake = null } = {}) {
+    Object.assign(this, { config, state, rest, firstmate, fetcher, onError, keepAwake });
     this.channelCache = new Map();
   }
 
@@ -23,6 +23,7 @@ export class Relay {
 
   async inbound(message) {
     if (!await this.allowed(message)) return false;
+    try { this.keepAwake?.start(); } catch (error) { this.onError(error); }
     return this.state.run(async (state, save) => {
       state.pendingMessages ||= {};
       if (Object.hasOwn(state.messages, message.id)) return true;

@@ -38,5 +38,6 @@ export async function loadConfig(env = process.env, cwd = process.cwd()) {
     channel: values.DISCORD_CHANNEL_ID, owner: values.DISCORD_OWNER_ID,
     home, inbox: resolve(cwd, values.FM_INBOX_BIN || join(home, 'bin/fm-inbox.sh')),
     data, media: join(data, 'media'), roots: [join(home, 'data'), join(data, 'media')],
+    keepAwakeSeconds: Math.max(0, Number.parseInt(values.KEEP_AWAKE_SECONDS || '0', 10) || 0),
   };
 }
