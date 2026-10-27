@@ -8,6 +8,7 @@ import { DiscordREST } from './rest.mjs';
 import { Firstmate } from './firstmate.mjs';
 import { Gateway } from './gateway.mjs';
 import { Relay } from './relay.mjs';
+import { KeepAwake } from './keep-awake.mjs';
 
 export async function main(args = process.argv.slice(2)) {
   let config;
@@ -58,7 +59,8 @@ export async function main(args = process.argv.slice(2)) {
     await mkdir(config.data, { recursive: true, mode: 0o700 });
     release = await acquireLock(join(config.data, 'bridge.lock'), 0);
     const state = new State(config.data);
-    const relay = new Relay(config, state, rest, new Firstmate(config), { onError: logError });
+    const keepAwake = new KeepAwake(config.keepAwakeSeconds, { onError: () => console.error('Could not start caffeinate.') });
+    const relay = new Relay(config, state, rest, new Firstmate(config), { onError: logError, keepAwake });
     relay.botId = bot.id;
     const poll = async (action, interval) => {
       if (stopping) return;
