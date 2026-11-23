@@ -55,6 +55,32 @@ It does not start the Gateway connection.
 Tests use local files and fake network transports.
 Tests do not use a Discord token or a real firstmate queue.
 
+## Keep the bridge running
+
+Run the bridge as a launchd user job.
+The job starts at login and after a restart of the Mac.
+`KeepAlive` starts the bridge again after it stops for any reason.
+Follow [the launchd steps](docs/SETUP.md#9-install-the-launchd-job).
+A bridge that is not running receives no Discord messages.
+The Stop hook can still post answers to Discord when the bridge is stopped.
+Those posts do not show that the bridge is running.
+
+The bridge writes one line to `logs/lifecycle.log` for each of these events:
+
+- It starts, with the Node.js version and the working directory.
+- It takes over a lock from a process that no longer exists.
+- It is ready.
+- It receives `SIGINT`, `SIGTERM`, or `SIGHUP`.
+- The Gateway reports a fatal error.
+- It fails to start, with the reason.
+- An uncaught error or unhandled rejection stops it, with the stack.
+- It exits, with the exit code.
+
+A line that has a start but no matching exit shows a hard stop, such as `SIGKILL` or a power loss.
+The next start then logs the lock takeover.
+The launchd output files `logs/bridge.log` and `logs/bridge.error.log` keep the console output.
+The bridge removes the bot token from each logged reason.
+
 ## Forward the terminal answer to Discord
 
 `src/forward-final.mjs` sends the final Claude Code answer to Discord.
@@ -128,6 +154,7 @@ Keep these records to prevent repeated replies.
 - Gateway resume handles short connection failures.
 - A full process restart starts a new Gateway session.
 - Discord messages sent while the bridge is stopped are not imported from channel history.
+- A lock check uses only the process ID. If the Mac reuses the ID of a dead bridge for another process, the start fails with `Bridge state is locked`. Launchd tries again until the other process ends.
 - A saved inbound message remains in the local retry queue until note creation succeeds.
 - A repeated message uses the same firstmate request ID.
 - Files must not exceed 25,000,000 bytes each.

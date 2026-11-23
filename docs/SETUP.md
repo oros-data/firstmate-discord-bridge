@@ -318,8 +318,34 @@ launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.firstmate.dis
 Read the logs:
 
 ```sh
-tail -f /path/to/firstmate-discord-bridge/logs/bridge.log /path/to/firstmate-discord-bridge/logs/bridge.error.log
+tail -f /path/to/firstmate-discord-bridge/logs/lifecycle.log /path/to/firstmate-discord-bridge/logs/bridge.log /path/to/firstmate-discord-bridge/logs/bridge.error.log
 ```
+
+`logs/lifecycle.log` states why the bridge started and why it stopped.
+It records signals, crash reasons, and lock takeovers.
+
+Test the restart.
+Stop the bridge process with a hard kill:
+
+```sh
+kill -9 "$(cat /path/to/firstmate-discord-bridge/data/bridge.lock/pid)"
+```
+
+Wait 30 seconds.
+Run `launchctl print "gui/$(id -u)/com.firstmate.discord-bridge"`.
+The output must show a new `pid`.
+`logs/lifecycle.log` must show `took over stale bridge.lock`.
+
+If `launchctl bootstrap` refuses the job, run these commands in a Terminal window of your own login session:
+
+```sh
+launchctl bootout "gui/$(id -u)/com.firstmate.discord-bridge" 2>/dev/null
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.firstmate.discord-bridge.plist"
+launchctl kickstart -k "gui/$(id -u)/com.firstmate.discord-bridge"
+```
+
+To load a new version of the code, run `git pull` in the bridge repository.
+Then run the `kickstart` command above.
 
 Check the job:
 
@@ -355,7 +381,7 @@ This command does not guarantee operation with a closed laptop lid.
 
 | Problem | Action |
 | --- | --- |
-| Bot is offline | Check Node.js, the token, the launchd log, and the Mac sleep state. |
+| Bot is offline | Check Node.js, the token, `logs/lifecycle.log`, the launchd log, and the Mac sleep state. |
 | No reply | Check the eyes reaction and the firstmate queue. |
 | Gateway error `4014` | Enable Message Content Intent on the Bot page. |
 | Missing permissions or REST `403` | Check all seven permissions on the parent channel and thread. |
@@ -400,7 +426,7 @@ Delete `creating` without a thread ID only if you can prove that no thread was c
 
 The lock directories contain a local process ID.
 A normal stop removes the locks.
-A restart removes a lock whose process no longer exists.
+A start removes a lock whose process no longer exists and writes this event to `logs/lifecycle.log`.
 If a lock has no valid process ID, stop all bridge commands before manual removal.
 Never edit the state while a bridge or progress command runs.
 
