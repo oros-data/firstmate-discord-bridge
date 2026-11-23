@@ -9,6 +9,7 @@ import { Firstmate } from './firstmate.mjs';
 import { Gateway } from './gateway.mjs';
 import { Relay } from './relay.mjs';
 import { KeepAwake } from './keep-awake.mjs';
+import { createLog } from './log.mjs';
 
 export async function main(args = process.argv.slice(2)) {
   let config;
@@ -24,6 +25,8 @@ export async function main(args = process.argv.slice(2)) {
     errors.set(message, Date.now());
     console.error(message);
   };
+  let log = () => {};
+  const describe = error => redact(error?.stack || error, config?.token || process.env.DISCORD_BOT_TOKEN);
   const stop = async () => {
     stopping = true;
     gateway?.stop();
@@ -35,6 +38,14 @@ export async function main(args = process.argv.slice(2)) {
   try {
     if (args.some(arg => !['--check', '--dry-run'].includes(arg)) || args.length > 1) {
       throw new Error('Usage: node src/bridge.mjs [--check|--dry-run]');
+    }
+    if (!args.length) {
+      log = createLog(join(process.cwd(), 'logs', 'lifecycle.log'));
+      log(`start node=${process.version} cwd=${process.cwd()}`);
+      process.on('exit', code => log(`exit code=${code}`));
+      for (const event of ['uncaughtException', 'unhandledRejection']) {
+        process.once(event, error => { log(`crash ${event}: ${describe(error)}`); process.exitCode = 1; void stop().finally(() => process.exit(1)); });
+      }
     }
     config = await loadConfig();
     if (args.includes('--dry-run')) {
@@ -57,7 +68,9 @@ export async function main(args = process.argv.slice(2)) {
       throw new Error(`Discord session start limit reached. Retry after ${gatewayInfo.session_start_limit.reset_after} ms.`);
     }
     await mkdir(config.data, { recursive: true, mode: 0o700 });
-    release = await acquireLock(join(config.data, 'bridge.lock'), 0);
+    release = await acquireLock(join(config.data, 'bridge.lock'), 0, {
+      onTakeover: pid => log(`took over stale bridge.lock: process ${pid} is not running, so it did not stop cleanly`),
+    });
     const state = new State(config.data);
     const keepAwake = new KeepAwake(config.keepAwakeSeconds, { onError: () => console.error('Could not start caffeinate.') });
     const relay = new Relay(config, state, rest, new Firstmate(config), { onError: logError, keepAwake });
@@ -76,16 +89,19 @@ export async function main(args = process.argv.slice(2)) {
     gateway = new Gateway({ token: config.token, url: gatewayInfo.url,
       onDispatch: async (type, message) => { if (type === 'MESSAGE_CREATE') await relay.inbound(message); },
       onError: logError,
-      onFatal: error => { logError(error); process.exitCode = 1; void stop(); },
+      onFatal: error => { logError(error); log(`stop gateway fatal: ${describe(error)}`); process.exitCode = 1; void stop(); },
     });
-    process.once('SIGINT', () => { void stop(); });
-    process.once('SIGTERM', () => { void stop(); });
+    for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+      process.once(signal, () => { log(`stop signal ${signal}`); void stop(); });
+    }
     gateway.start();
     void poll(() => relay.pollReplies(), 3000);
     void poll(() => relay.pollTasks(), 10000);
     console.log('Discord bridge started.');
+    log('ready: gateway starting, pollers running');
   } catch (error) {
     logError(error);
+    log(`startup failed: ${describe(error)}`);
     process.exitCode = 1;
     await stop();
   }

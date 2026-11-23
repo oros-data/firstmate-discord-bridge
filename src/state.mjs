@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-export async function acquireLock(path, wait = 15000) {
+export async function acquireLock(path, wait = 15000, { onTakeover } = {}) {
   const deadline = Date.now() + wait;
   while (true) {
     try {
@@ -28,7 +28,10 @@ export async function acquireLock(path, wait = 15000) {
               let dead = false;
               try { process.kill(current, 0); }
               catch (check) { if (check.code === 'ESRCH') dead = true; else throw check; }
-              if (dead) await rm(path, { recursive: true, force: true });
+              if (dead) {
+                await rm(path, { recursive: true, force: true });
+                onTakeover?.(current, path);
+              }
             }
           } catch (check) {
             if (!['EEXIST', 'ENOENT'].includes(check.code)) throw check;
